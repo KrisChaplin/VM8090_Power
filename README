@@ -1,0 +1,74 @@
+This is a simple Linux-based command line tool for controlling the
+(nice) 8-channel USB relay card from Velleman, model VM8090/K8090.
+
+-- To build it, just use the provided Makefile to generate the "power"
+executable.
+
+-- To use it, in short:
+
+Plug the USB cable of your relay card, an ACM serial device should appear. By default, this tool assumes /dev/ttyACM0, you can use the --device option to change this from the command line.
+
+$ ./power --help
+usage: power <options>, with:
+--on=<relay-list>           turn relay(s) ON
+--off[=<relay-list>]        turn relay(s) OFF (defaults to all)
+--toggle[=<relay-list>]     toggle relay(s) (defaults to all)
+--cycle=<relay-list>        power cycle relay(s)
+--status=[<relay-list>]     get relay(s) status (defaults to all)
+--firmware                  query firmware version
+--debug                     dump serial traffic to stderr
+--device=path               path to ACM device
+--help                      this help
+(relay-list: [1-8] or alias, [1-8]...)
+
+-- Typical session
+
+# power on relays 1 and 7
+$ ./power --on=1,7
+
+# cycle power on relay 7
+$ ./power --cycle=7
+
+# turn on 6 and turn off 2
+$ ./power --on=6 --off=2
+
+and so on.
+
+-- Using aliases
+
+Quite often, you will want to give nicknames to relays, depending on which board/hardware is being controlled by each relay. To this end, you can create aliases in the /etc/power directory. Each alias should be created as a symbolic link, with the link source mentioning the relay # (or list thereof), and the link target defined as the alias name, e.g.
+
+$ ls -l /etc/power/
+total 0
+lrwxrwxrwx 1 root root 1 Mar 15 19:14 sequoia -> 1 
+lrwxrwxrwx 1 root root 1 Mar 15 19:14 bf561 -> 2 
+lrwxrwxrwx 1 root root 1 Mar 15 19:14 quatro -> 3 
+lrwxrwxrwx 1 root root 1 Mar 15 19:14 phoenix -> 5 
+lrwxrwxrwx 1 root root 1 Mar 15 19:14 dm8148 -> 7 
+lrwxrwxrwx 1 root root 1 Mar 15 19:14 icecube -> 8
+
+These aliases will be recognized and expanded to the actual relay number by the "power" command, when they appear in a relay list.
+
+# e.g. turn on the ppc "icecube" board
+$ ./power --on=icecube
+
+You may also define group aliases, representing a list of relays, e.g.
+
+$ ln -s 3,7 /etc/power/arm
+$ ls -l /etc/power/
+total 0
+lrwxrwxrwx 1 root root 1 Mar 15 19:14 arm -> 3,7 ...
+
+Since each alias is processed recursively, you may mention another alias in any alias list, such as:
+
+$ ln -s sequoia,phoenix,icecube, /etc/power/ppc
+
+# get relay status for all arm and ppc boards $ ./power --status=arm,ppc
+#1 => --
+#3 => ON
+#5 => --
+#7 => ON
+#8 => ON
+
+This code does not provide any control for the relay timers or buttons.  It implements the required portions of the protocol described in the K8090/VM8090 Protocol Manual.
+
